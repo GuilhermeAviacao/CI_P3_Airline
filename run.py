@@ -76,7 +76,6 @@ destination = input("Enter the destination airport 3-letter IATA code: ").strip(
 
 record_user_input(SHEET, origin, destination)
 
-###########################################################
 
 # Access the worksheets
 user_input_sheet = SHEET.worksheet("User_Input")
