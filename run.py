@@ -75,3 +75,61 @@ origin = input("Enter the origin airport 3-letter IATA code: ").strip().upper()
 destination = input("Enter the destination airport 3-letter IATA code: ").strip().upper()
 
 record_user_input(SHEET, origin, destination)
+
+###########################################################
+
+# Access the worksheets
+user_input_sheet = SHEET.worksheet("User_Input")
+airports_sheet = SHEET.worksheet("Airports")
+results_sheet = SHEET.worksheet("Results")
+
+
+# Function to get the latitude and longitude of an airport from the Airports worksheet
+# Latitude in column 2 and Longitude in column 3
+
+def get_lat_lon(airport_code):
+    try:
+        # Find the row in Airports sheet with the matching airport code
+        cell = airports_sheet.find(airport_code)
+        row = cell.row
+        lat = airports_sheet.cell(row, 2).value
+        lon = airports_sheet.cell(row, 3).value
+        return lat, lon
+
+    except gspread.exceptions.CellNotFound:
+        print(f"There is no coordinates data for Airport {airport_code} .")
+        return None, None
+
+
+# Get the last row of data from User_Input sheet
+user_input_data = user_input_sheet.get_all_records()
+if user_input_data:
+    last_row = user_input_data[-1]  # Get the last row of input data
+    origin_airport = last_row.get('Origin_Airport')
+    destination_airport = last_row.get('Destination_Airport')
+
+    # Get latitude and longitude for the origin airport
+    orig_lat, orig_lon = get_lat_lon(origin_airport)
+
+    # Get latitude and longitude for the destination airport
+    dest_lat, dest_lon = get_lat_lon(destination_airport)
+
+    if orig_lat and orig_lon and dest_lat and dest_lon:
+        # Prepare the result data
+        result_data = [
+            origin_airport, orig_lat, orig_lon,
+            destination_airport, dest_lat, dest_lon
+        ]
+
+        # Find the first empty row in the Results worksheet
+        # This assumes that there is no data in the first column of empty rows
+        next_empty_row = len(results_sheet.col_values(1)) + 1
+
+        # Store the result data in the next empty row
+        results_sheet.insert_row(result_data, next_empty_row)
+        print("Results stored in the 'Results' worksheet.")
+    else:
+        print("Unable to retrieve latitudes and longitudes for the two airports.")
+else:
+    print("No data found in 'User_Input' worksheet.")
+
