@@ -29,8 +29,8 @@ def get_user_input():
 
     # Prompt the user
     print("\nPlease make your inputs using the 3-letter IATA codes.")
-    origin = input("\nEnter the origin airport: ").strip().upper()
-    destination = input("Enter the destination airport: ").strip().upper()
+    origin = input("\nEnter the origin airport: \n").strip().upper()
+    destination = input("Enter the destination airport: \n").strip().upper()
 
     # Checks if Destination is different from Origin.
     if origin == destination:
@@ -201,7 +201,8 @@ def main():
             print("2. View all available airports.")
             print("3. View all prior calculations.")
             print("4. Exit.")
-            user_choice = input("\nPlease select an option (1/2/3/4): ").strip()
+
+            user_choice = input("\nPlease select an option (1/2/3/4): \n").strip()
 
             #Airport Distance Calculation
 
