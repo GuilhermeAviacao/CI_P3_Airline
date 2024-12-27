@@ -1,5 +1,4 @@
-import gspread
-import math
+import gspread, math
 from google.oauth2.service_account import Credentials
 
 # Constants
@@ -19,7 +18,61 @@ user_input_sheet = SHEET.worksheet("User_Input")
 airports_sheet = SHEET.worksheet("Airports")
 results_sheet = SHEET.worksheet("Results")
 
-# Function to get the latitude and longitude of an airport from the Airports worksheet
+# Function to record user input for origin and destination
+
+def get_user_input():
+    """
+    Asks for the user to enter origin and destination in IATA code format
+    """
+
+    # Prompt the user
+    print("Please make your inputs using the 3-letter IATA codes.")
+    origin = input("Enter the origin airport: ").strip().upper()
+    destination = input("Enter the destination airport: ").strip().upper()
+
+    # CheckS if Destination is different from Origin.
+    if origin == destination:
+        print(f" {origin} cannot be origin and destination. Please input another destination.")
+        raise ValueError("Destination must be different from origin.")
+
+    # Check if input is in the IATA 3-letters standard.
+    if len(origin) != 3 or len(destination) != 3:
+        print(f"Invalid codes: {origin}, {destination}. Both must be 3-letter IATA codes.")
+        raise ValueError("Invalid IATA codes length.")
+
+    # Checks that both codes contain letters only
+    if not origin.isalpha() or not destination.isalpha():
+        print(f"Invalid codes: {origin}, {destination}. Both must contain letters only.")
+        raise ValueError("Invalid IATA codes, must contain letters only.")
+
+    # Gets the data base list of all airport codes .
+    try:
+        all_airport_rows = airports_sheet.get_all_values()
+        valid_codes = {row[0].upper() for row in all_airport_rows if row}
+    except Exception as e:
+        print(f"Error accessing Airports sheet: {e}")
+        raise Exception("Error accessing Airports sheet.")
+
+    # Check for existence of origin and destination
+    if origin not in valid_codes:
+        print(f"Invalid origin code: {origin} does not exist in the Airports sheet.")
+        raise ValueError("Invalid origin code.")
+
+    if destination not in valid_codes:
+        print(f"Invalid destination code: {destination} does not exist in the Airports sheet.")
+        raise ValueError("Invalid destination code.")
+
+    # Appends the User Input Sheet with valid Origin and Destination records.
+    try:
+        user_input_sheet.append_row([origin, destination])
+        print(f"Inputs recorded: Origin = {origin}, Destination = {destination}")
+
+    except Exception as e:
+        print(f"Error while recording inputs: {e}")
+        raise Exception("Error while recording inputs.")
+
+
+# Function to get the latitude and longitude of an airport from the Airports database worksheet
 def get_lat_lon(airport_code):
     try:
         cell = airports_sheet.find(airport_code)
@@ -27,38 +80,30 @@ def get_lat_lon(airport_code):
         lat = float(airports_sheet.cell(row, 2).value)
         lon = float(airports_sheet.cell(row, 3).value)
         return lat, lon
+
     except gspread.exceptions.CellNotFound:
         print(f"Airport {airport_code} not found in Airports sheet.")
         return None, None
 
-# Function to record user input for origin and destination
-def record_user_input(origin, destination):
-    if len(origin) != 3 or len(destination) != 3:
-        print(f"Invalid codes: {origin}, {destination}. Both must be 3-letter IATA codes.")
-        return
-
-    try:
-        user_input_sheet.append_row([origin, destination])
-        print(f"Inputs recorded: Origin = {origin}, Destination = {destination}")
-    except Exception as e:
-        print(f"Error while recording inputs: {e}")
 
 # Function to calculate distance using Great Circle Distance formula
+# Reference to Ed Williams Aviation Formulary: https://edwilliams.org/avform147.htm#Dist
+
 def calculate_distance_km(lat1, lon1, lat2, lon2):
-    R = 6371.2  # Radius of Earth in kilometers
+    R = 6371.2  # Radius of Earth in Kilometers
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
     a = math.sin(dlat / 2) ** 2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return round(R * c)  # Return the distance in kilometers
+    return round(R * c)
 
 # Function to Print the distance in the Results worksheet
 def print_distance_results_sheet(row_index, orig_lat, orig_lon, dest_lat, dest_lon):
     try:
         distance_km = calculate_distance_km(orig_lat, orig_lon, dest_lat, dest_lon)
-        # Update the "Distance_KM" column (column G=7)
+
         results_sheet.update_cell(row_index, 7, distance_km)
-        #print(f"Distance for row {row_index} updated: {distance_km} km")
+
         return distance_km  # Return the calculated distance
     except ValueError as e:
         print(f"Error calculating distance for row {row_index}: {e}")
@@ -68,7 +113,7 @@ def print_distance_results_sheet(row_index, orig_lat, orig_lon, dest_lat, dest_l
         return None
 
 # Fetching and displaying the last user input
-def fetch_user_input():
+def printing_distance_km_according_to_input():
     user_input_data = user_input_sheet.get_all_records()
     if user_input_data:
         last_row = user_input_data[-1]
@@ -104,22 +149,32 @@ def fetch_user_input():
     else:
         print("No data found in 'User_Input' worksheet.")
 
-
-# Main block for user input and results
-
+#Main function calling the program sequence
 def main():
-    print("This program will calculate the distance in Km between two airports.")
-    print("Please make your inputs using the 3-letter IATA codes.")
-    origin = input("Enter the origin airport: ").strip().upper()
-    destination = input("Enter the destination airport: ").strip().upper()
-    record_user_input(origin, destination)
-    print("Please wait for calculation...")
-    origin_airport, destination_airport, distance_km = fetch_user_input()
+    while True:
+        try:
+            print("This program will calculate the distance in Km between two airports.")
+            get_user_input()
+            print("Please wait for calculation...")
 
-    if origin_airport and destination_airport and distance_km is not None:
-        print(f"The distance between {origin_airport} and {destination_airport} is {distance_km} Km.")
-    else:
-        print("There was an issue with the distance calculation.")
+            origin_airport, destination_airport, distance_km = printing_distance_km_according_to_input()
 
-if __name__ == "__main__":
-    main()
+            if origin_airport and destination_airport and distance_km is not None:
+                print(f"The distance between {origin_airport} and {destination_airport} is {distance_km} Km.")
+                print("Calculation complete.")
+            else:
+                print("There was an issue with the distance calculation.")
+
+            # Ask the user if another input is wanted
+            user_choice = input("Do you want to input another airport pair? (yes/no): ").strip().lower()
+            if user_choice != 'yes':
+                print("Thanks for your input! Have a nice trip!")
+                break  # Exit the loop if the user doesn't want to continue
+
+        except Exception as err:
+            print(f"An error occurred: {err}")
+            #print("The program will stop now.")
+            #break  # Stop the program if there is any error in get_user_input()
+
+# Calling the main function
+main()
