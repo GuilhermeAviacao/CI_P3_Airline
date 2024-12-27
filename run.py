@@ -14,6 +14,8 @@ GSPREAD_CLIENT = gspread.authorize(SCOPED_CREDS)
 SHEET = GSPREAD_CLIENT.open('CIP3_Airline')
 
 # Worksheets
+# Credits for the airport database from https://ourairports.com/data/
+
 user_input_sheet = SHEET.worksheet("User_Input")
 airports_sheet = SHEET.worksheet("Airports")
 results_sheet = SHEET.worksheet("Results")
@@ -26,16 +28,16 @@ def get_user_input():
     """
 
     # Prompt the user
-    print("Please make your inputs using the 3-letter IATA codes.")
-    origin = input("Enter the origin airport: ").strip().upper()
+    print("\nPlease make your inputs using the 3-letter IATA codes.")
+    origin = input("\nEnter the origin airport: ").strip().upper()
     destination = input("Enter the destination airport: ").strip().upper()
 
-    # CheckS if Destination is different from Origin.
+    # Checks if Destination is different from Origin.
     if origin == destination:
         print(f" {origin} cannot be origin and destination. Please input another destination.")
         raise ValueError("Destination must be different from origin.")
 
-    # Check if input is in the IATA 3-letters standard.
+    # Checks if input is in the IATA 3-letters standard.
     if len(origin) != 3 or len(destination) != 3:
         print(f"Invalid codes: {origin}, {destination}. Both must be 3-letter IATA codes.")
         raise ValueError("Invalid IATA codes length.")
@@ -74,6 +76,9 @@ def get_user_input():
 
 # Function to get the latitude and longitude of an airport from the Airports database worksheet
 def get_lat_lon(airport_code):
+
+    #"Function to get the latitude and longitude of an airport from the Airports database worksheet"
+
     try:
         cell = airports_sheet.find(airport_code)
         row = cell.row
@@ -149,32 +154,92 @@ def printing_distance_km_according_to_input():
     else:
         print("No data found in 'User_Input' worksheet.")
 
-#Main function calling the program sequence
+
+def view_all_airports():
+    """
+    Fetch and display all airport records from the Airports worksheet.
+    """
+    try:
+        all_airport_rows = airports_sheet.get_all_values()
+        if all_airport_rows:
+            print("\nAvailable Airports:")
+            for row in all_airport_rows:
+                print(f"IATA Code: {row[0]}, Latitude: {row[1]}, Longitude: {row[2]}, Name: {row[3]}, Municipality: {row[4]}, Country: {row[5]}, Continent: {row[6]} ")
+        else:
+            print("No records found in the Airports database.")
+
+    except Exception as e:
+        print(f"Error accessing Airports sheet: {e}")
+
+
+#Function to get all results from user route inputs
+def view_all_results():
+    """
+    Fetch and display all user_input records from the Results worksheet.
+    """
+    try:
+        view_all_results = results_sheet.get_all_values()
+        if view_all_results:
+            print("\nPrior calculated route results from user inputs:")
+            for row in view_all_results:
+                print(f"Origin Airport : {row[0]}, Orig_Lat: {row[1]}, Orig_Lon: {row[2]}, Destination Airport : {row[3]}, Dest_Lat: {row[4]}, Dest_Lon: {row[5]}, Distance_Km: {row[6]}")
+        else:
+            print("No records found in the Results Sheet.")
+
+    except Exception as e:
+        print(f"Error accessing Results sheet: {e}")
+
+#Calling of main function
+
 def main():
+    print("\nWelcome to the Airport Distance Calculator!")
+
     while True:
         try:
-            print("This program will calculate the distance in Km between two airports.")
-            get_user_input()
-            print("Please wait for calculation...")
 
-            origin_airport, destination_airport, distance_km = printing_distance_km_according_to_input()
+            print("\n1. Calculation of Airport Distances. Enter a new origin and destination.")
+            print("2. View all available airports.")
+            print("3. View all prior calculations.")
+            print("4. Exit.")
+            user_choice = input("\nPlease select an option (1/2/3/4): ").strip()
 
-            if origin_airport and destination_airport and distance_km is not None:
-                print(f"The distance between {origin_airport} and {destination_airport} is {distance_km} Km.")
-                print("Calculation complete.")
+            #Airport Distance Calculation
+
+            if user_choice == "1":
+
+                get_user_input()
+                print("\nPlease wait for calculation...")
+
+                origin_airport, destination_airport, distance_km = printing_distance_km_according_to_input()
+
+                if origin_airport and destination_airport and distance_km is not None:
+                    print(f"\nThe distance between {origin_airport} and {destination_airport} is {distance_km} Kms.")
+                    print("\nHave a nice trip!")
+                else:
+                    print("There was an issue with the distance calculation.")
+
+            # Query to Display all airports in the database
+            elif user_choice == "2":
+                view_all_airports()  # Display all available airports
+                print("\nEnd of Airport database results.")
+
+            # Query to Display all results in the database
+            elif user_choice == "3":
+                view_all_results()  # Display all available airports
+                print("\nEnd of calculated results sheet.")
+
+            # Exit for the program
+            elif user_choice == "4":
+                print("\nThanks for using the Airport Distance Calculator!")
+                break
+
             else:
-                print("There was an issue with the distance calculation.")
-
-            # Ask the user if another input is wanted
-            user_choice = input("Do you want to input another airport pair? (yes/no): ").strip().lower()
-            if user_choice != 'yes':
-                print("Thanks for your input! Have a nice trip!")
-                break  # Exit the loop if the user doesn't want to continue
+                print("Invalid option. Please select 1, 2, 3 or 4.")
 
         except Exception as err:
             print(f"An error occurred: {err}")
-            #print("The program will stop now.")
-            #break  # Stop the program if there is any error in get_user_input()
 
-# Calling the main function
+
+
+# Calls the main function
 main()
